@@ -1,7 +1,9 @@
-apiVersion: apps/v2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: go-api-v2-canary-deployment
+  labels:
+    app: go-api
 spec:
   replicas: 1
   selector:

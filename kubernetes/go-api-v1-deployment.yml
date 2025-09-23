@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: go-api
-        image: tsntt/go-microservice:latest
+        image: tsntt/go-microservice@sha256:c70af8c923dcbf88cb7a2181e388c46840ad648e1ad50053b091f4a43ffb8ba1
         
         ports:
         - containerPort: 8000
