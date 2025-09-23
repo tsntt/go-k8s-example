@@ -86,8 +86,17 @@ func usersHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Failed to retrieve users", http.StatusInternalServerError)
 			return
 		}
+
+		response := struct {
+			Version string `json:"version"`
+			Users   []User `json:"users"`
+		}{
+			Version: "v2.0.0",
+			Users:   users,
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(users)
+		json.NewEncoder(w).Encode(response)
 
 	case "POST":
 		var newUser User
