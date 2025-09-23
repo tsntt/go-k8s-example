@@ -16,19 +16,40 @@ spec:
     spec:
       containers:
       - name: go-api
-        image: seu-usuario-dockerhub/go-microservice:latest # Substitua pelo seu nome de usuário!
+        image: tsntt/go-microservice:latest
+        
         ports:
-        - containerPort: 8080
-        # Configurações de probes para alta disponibilidade
+        - containerPort: 8000
+        env:
+        - name: DB_HOST
+          value: postgres-db-service
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: password
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: dbname
+        # Config probes for high availability
         livenessProbe:
           httpGet:
             path: /healthz
-            port: 8080
+            port: 8000
           initialDelaySeconds: 15
           periodSeconds: 20
         readinessProbe:
           httpGet:
             path: /readiness
-            port: 8080
+            port: 8000
           initialDelaySeconds: 5
           periodSeconds: 10
+      imagePullSecrets:
+          - name: regcred

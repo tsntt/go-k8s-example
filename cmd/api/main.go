@@ -2,20 +2,23 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"sync/atomic"
 	"time"
 
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type User struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID   string `json:"id" db:"id"`
+	Name string `json:"name" db:"name"`
 }
 
 var (
@@ -25,11 +28,35 @@ var (
 	})
 	// atomic flag for readiness probe
 	isReady atomic.Bool
+	db      *sqlx.DB
 )
 
-var users = []User{
-	{ID: "1", Name: "Alice"},
-	{ID: "2", Name: "Bob"},
+func initDB() error {
+	connStr := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable",
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_NAME"))
+
+	var err error
+	db, err = sqlx.Connect("postgres", connStr)
+	if err != nil {
+		return fmt.Errorf("Failed to connect to db: %w", err)
+	}
+
+	if err = db.Ping(); err != nil {
+		return fmt.Errorf("failed to ping db: %w", err)
+	}
+
+	schema := `CREATE TABLE IF NOT EXISTS users (
+		id VARCHAR(255) PRIMARY KEY,
+		name VARCHAR(255)
+	);`
+	if _, err := db.Exec(schema); err != nil {
+		return fmt.Errorf("Failed to create table: %w", err)
+	}
+	slog.Info("db connection established sucessfully")
+	return nil
 }
 
 func healthzHandler(w http.ResponseWriter, r *http.Request) {
@@ -53,8 +80,29 @@ func usersHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case "GET":
+		var users []User
+		err := db.Select(&users, "SELECT * FROM users")
+		if err != nil {
+			http.Error(w, "Failed to retrieve users", http.StatusInternalServerError)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(users)
+
+	case "POST":
+		var newUser User
+		if err := json.NewDecoder(r.Body).Decode(&newUser); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		_, err := db.NamedExec("INSERT INTO users (id, name) VALUES (:id, :name)", newUser)
+		if err != nil {
+			http.Error(w, "Failed inserting user", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(fmt.Sprintf("User %s successfully created!", newUser.Name)))
+
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -78,7 +126,7 @@ func main() {
 		slog.Info("Application is ready to receive traffic.")
 	}()
 
-	slog.Info("Server running", "port", 8080)
+	slog.Info("Server running", "port", 8000)
 	err := http.ListenAndServe(":8000", mux)
 	if err != nil {
 		slog.Error("Failed to start the server", "error", err)

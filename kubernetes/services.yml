@@ -8,5 +8,5 @@ spec:
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 8080
-  type: LoadBalancer # Simula um balanceador de carga no Docker Desktop
+      targetPort: 8000
+  type: LoadBalancer # emulated a load balancer on docker desktop
