@@ -53,8 +53,9 @@ func initDB() error {
 		name VARCHAR(255)
 	);`
 	if _, err := db.Exec(schema); err != nil {
-		return fmt.Errorf("Failed to create table: %w", err)
+		return fmt.Errorf("failed to create table: %w", err)
 	}
+
 	slog.Info("db connection established sucessfully")
 	return nil
 }
