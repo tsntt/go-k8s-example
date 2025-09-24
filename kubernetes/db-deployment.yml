@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: postgres-db-deployment
+  namespace: go-api
   labels:
     app: postgres-db
 spec:

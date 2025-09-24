@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: go-api-deployment
+  namespace: go-api
   labels:
     app: go-api
 spec:
